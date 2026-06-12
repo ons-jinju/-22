@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>나의 템플스테이 — 마음의 쉼</title>
+
+  <!-- Leaflet (OpenStreetMap, API키 불필요) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;600;700&family=Noto+Sans+KR:wght@300;400;500&display=swap');
+
+    :root {
+      --moss: #4a6741;
+      --bamboo: #7a9e68;
+      --sand: #e8dcc8;
+      --earth: #c4a882;
+      --ink: #2c2416;
+      --mist: #f5f0e8;
+      --sky: #d4e6f1;
+      --crimson: #8b2635;
+      --gold: #c9932a;
+      --shadow: rgba(44,36,22,0.12);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background: var(--mist);
+      color: var(--ink);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: var(--moss);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      height: 60px;
+      box-shadow: 0 2px 12px var(--shadow);
+      flex-shrink: 0;
+      z-index: 1000;
+    }
+
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: white; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; font-size: 20px;
+    }
+    .logo h1 { font-family: 'Noto Serif KR', serif; font-size: 20px; font-weight: 700; letter-spacing: 1px; }
+    .logo p { font-size: 11px; opacity: 0.75; letter-spacing: 2px; }
+
+    .header-right { display: flex; gap: 8px; }
+    .badge {
+      background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 20px; padding: 4px 14px; font-size: 12px; color: white;
+    }
+
+    /* ── MAIN ── */
+    .main { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: 340px; background: white;
+      display: flex; flex-direction: column;
+      border-right: 1px solid #e0d8cc;
+      overflow: hidden; flex-shrink: 0;
+      z-index: 100;
+    }
+
+    .season-tabs {
+      display: flex; background: var(--sand);
+      border-bottom: 2px solid var(--earth); flex-shrink: 0;
+    }
+    .season-tab {
+      flex: 1; padding: 10px 4px; text-align: center; cursor: pointer;
+      font-size: 12px; font-weight: 500; transition: all 0.2s;
+      border: none; background: transparent; color: #7a6a52;
+    }
+    .season-tab:hover { background: rgba(255,255,255,0.5); }
+    .season-tab.active {
+      background: white; color: var(--moss); font-weight: 700;
+      border-bottom: 3px solid var(--moss); margin-bottom: -2px;
+    }
+    .season-tab span { display: block; font-size: 18px; margin-bottom: 2px; }
+
+    .season-banner {
+      padding: 14px 16px;
+      background: linear-gradient(135deg, var(--moss), var(--bamboo));
+      color: white; flex-shrink: 0;
+    }
+    .season-banner h3 { font-family: 'Noto Serif KR', serif; font-size: 14px; margin-bottom: 4px; }
+    .season-banner p { font-size: 11px; opacity: 0.85; line-height: 1.5; }
+
+    .route-box {
+      padding: 12px 14px; background: var(--mist);
+      border-bottom: 1px solid #e0d8cc; flex-shrink: 0;
+    }
+    .route-box h4 {
+      font-size: 12px; color: var(--moss); font-weight: 700;
+      margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+    }
+    .route-input-row {
+      display: flex; gap: 6px; margin-bottom: 6px; align-items: center;
+    }
+    .route-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .route-dot.start { background: var(--moss); }
+    .route-dot.end { background: var(--crimson); }
+    .route-input-row input {
+      flex: 1; border: 1px solid #d0c8b8; border-radius: 8px;
+      padding: 6px 10px; font-size: 12px;
+      font-family: 'Noto Sans KR', sans-serif; background: white; outline: none;
+    }
+    .route-input-row input:focus {
+      border-color: var(--moss); box-shadow: 0 0 0 2px rgba(74,103,65,0.15);
+    }
+    .btn-locate {
+      background: var(--sky); border: 1px solid #b0c8d8; border-radius: 8px;
+      padding: 6px 8px; font-size: 11px; cursor: pointer; white-space: nowrap;
+    }
+    .btn-locate:hover { background: #c0d8e8; }
+    .btn-route {
+      width: 100%; background: #FEE500; color: #3C1E1E; border: none;
+      border-radius: 8px; padding: 8px; font-size: 13px;
+      font-family: 'Noto Sans KR', sans-serif; cursor: pointer; font-weight: 700;
+      margin-top: 2px; transition: opacity 0.2s;
+    }
+    .btn-route:hover { opacity: 0.85; }
+
+    .temple-list { flex: 1; overflow-y: auto; padding: 8px 0; }
+    .temple-list::-webkit-scrollbar { width: 4px; }
+    .temple-list::-webkit-scrollbar-thumb { background: var(--earth); border-radius: 2px; }
+
+    .temple-item {
+      display: flex; gap: 10px; padding: 10px 14px; cursor: pointer;
+      border-bottom: 1px solid #f0ebe0; transition: background 0.15s; align-items: flex-start;
+    }
+    .temple-item:hover { background: var(--mist); }
+    .temple-item.active { background: #eef4ec; border-left: 3px solid var(--moss); }
+
+    .temple-rank {
+      width: 22px; height: 22px; background: var(--sand); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700; color: var(--moss); flex-shrink: 0; margin-top: 1px;
+    }
+    .temple-item.recommended .temple-rank { background: var(--gold); color: white; }
+
+    .temple-info { flex: 1; min-width: 0; }
+    .temple-name-row { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
+    .temple-name { font-family: 'Noto Serif KR', serif; font-size: 14px; font-weight: 600; color: var(--ink); }
+    .badge-season { font-size: 10px; padding: 1px 6px; border-radius: 10px; font-weight: 500; }
+    .badge-spring { background: #fce4ec; color: #c2185b; }
+    .badge-summer { background: #e8f5e9; color: #388e3c; }
+    .badge-autumn { background: #fff3e0; color: #e65100; }
+    .badge-winter { background: #e3f2fd; color: #1565c0; }
+    .badge-all { background: #f3e5f5; color: #6a1b9a; }
+    .temple-meta { font-size: 11px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .temple-tag { font-size: 10px; color: var(--bamboo); margin-top: 2px; }
+
+    /* ── MAP ── */
+    .map-wrapper { flex: 1; position: relative; }
+    #map { width: 100%; height: 100%; }
+
+    /* ── DETAIL PANEL ── */
+    .detail-panel {
+      position: absolute; right: 16px; bottom: 16px; width: 300px;
+      background: white; border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(44,36,22,0.2);
+      overflow: hidden; display: none; z-index: 500;
+      animation: slideUp 0.3s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .detail-panel.visible { display: block; }
+
+    .detail-header {
+      background: linear-gradient(135deg, var(--moss), var(--bamboo));
+      padding: 16px; color: white; position: relative;
+    }
+    .detail-header h2 { font-family: 'Noto Serif KR', serif; font-size: 18px; font-weight: 700; margin-bottom: 2px; }
+    .detail-header p { font-size: 12px; opacity: 0.85; }
+    .btn-close {
+      position: absolute; right: 12px; top: 12px;
+      background: rgba(255,255,255,0.2); border: none; border-radius: 50%;
+      width: 26px; height: 26px; color: white; cursor: pointer; font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .detail-body { padding: 14px 16px; }
+    .detail-row { display: flex; gap: 8px; margin-bottom: 8px; font-size: 12px; align-items: flex-start; }
+    .detail-row .icon { font-size: 14px; flex-shrink: 0; }
+    .detail-row .label { color: #888; width: 40px; flex-shrink: 0; }
+    .detail-row .val { color: var(--ink); flex: 1; }
+
+    .tags-row { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0; }
+    .tag { background: var(--mist); border: 1px solid #ddd; border-radius: 10px; padding: 2px 8px; font-size: 11px; color: #666; }
+
+    .detail-actions { display: flex; gap: 8px; margin-top: 12px; }
+    .btn-kakao {
+      flex: 1; background: #FEE500; color: #3C1E1E; border: none;
+      border-radius: 8px; padding: 9px 8px; font-size: 12px;
+      font-family: 'Noto Sans KR', sans-serif; font-weight: 700; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 4px; transition: opacity 0.2s;
+    }
+    .btn-kakao:hover { opacity: 0.85; }
+    .btn-site {
+      flex: 1; background: var(--moss); color: white; border: none;
+      border-radius: 8px; padding: 9px 8px; font-size: 12px;
+      font-family: 'Noto Sans KR', sans-serif; font-weight: 500; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 4px; transition: background 0.2s;
+    }
+    .btn-site:hover { background: #3a5532; }
+
+    /* ── MOBILE ── */
+    @media (max-width: 680px) {
+      body { overflow: auto; }
+
+      .main { flex-direction: column; overflow: visible; }
+
+      .sidebar {
+        width: 100%;
+        max-height: none;
+        border-right: none;
+        border-bottom: 1px solid #e0d8cc;
+        overflow: visible;
+      }
+
+      .season-tabs .season-tab span { font-size: 14px; }
+      .season-tabs .season-tab { font-size: 11px; padding: 8px 2px; }
+
+      .temple-list {
+        max-height: 240px;
+        overflow-y: auto;
+      }
+
+      .map-wrapper {
+        height: 55vh;
+        flex: none;
+        position: relative;
+      }
+
+      #map { height: 100%; }
+
+      .detail-panel {
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        width: 100%;
+        border-radius: 20px 20px 0 0;
+        max-height: 55vh;
+        overflow-y: auto;
+        z-index: 1000;
+      }
+
+      header { padding: 0 14px; }
+      .logo h1 { font-size: 16px; }
+      .logo p { display: none; }
+      .badge { font-size: 10px; padding: 3px 8px; }
+
+      .route-box { padding: 10px 12px; }
+    }
+
+    /* Leaflet 팝업 커스텀 */
+    .leaflet-popup-content-wrapper {
+      border-radius: 12px !important;
+      box-shadow: 0 4px 20px rgba(44,36,22,0.18) !important;
+    }
+    .temple-popup { font-family: 'Noto Sans KR', sans-serif; min-width: 160px; }
+    .temple-popup h3 { font-family: 'Noto Serif KR', serif; font-size: 15px; color: var(--moss); margin-bottom: 4px; }
+    .temple-popup p { font-size: 11px; color: #888; margin-bottom: 6px; }
+    .temple-popup button {
+      background: var(--moss); color: white; border: none; border-radius: 6px;
+      padding: 5px 12px; font-size: 11px; cursor: pointer;
+      font-family: 'Noto Sans KR', sans-serif; width: 100%;
+    }
+    .temple-popup button:hover { background: #3a5532; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🏯</div>
+    <div>
+      <h1>나의 템플스테이</h1>
+      <p>TEMPLE STAY GUIDE</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="badge">🗺 지도 연동</span>
+    <span class="badge">🍂 계절별 추천</span>
+  </div>
+</header>
+
+<div class="main">
+  <div class="sidebar">
+    <div class="season-tabs">
+      <button class="season-tab" onclick="filterSeason('spring', this)"><span>🌸</span>봄</button>
+      <button class="season-tab" onclick="filterSeason('summer', this)"><span>🌿</span>여름</button>
+      <button class="season-tab" onclick="filterSeason('autumn', this)"><span>🍁</span>가을</button>
+      <button class="season-tab" onclick="filterSeason('winter', this)"><span>❄️</span>겨울</button>
+      <button class="season-tab active" onclick="filterSeason('all', this)"><span>🙏</span>전체</button>
+    </div>
+
+    <div class="season-banner" id="seasonBanner">
+      <h3>🙏 전국 템플스테이</h3>
+      <p>계절 탭을 눌러 그 계절에 어울리는 사찰을 추천받아 보세요.</p>
+    </div>
+
+    <div class="route-box">
+      <h4>🧭 길찾기</h4>
+      <div class="route-input-row">
+        <div class="route-dot start"></div>
+        <input type="text" id="startInput" placeholder="출발지 입력 (예: 서울역)" />
+        <button class="btn-locate" onclick="useMyLocation()">📍 내 위치</button>
+      </div>
+      <div class="route-input-row">
+        <div class="route-dot end"></div>
+        <input type="text" id="endInput" placeholder="지도에서 절을 선택하세요" readonly />
+      </div>
+      <button class="btn-route" onclick="openKakaoRoute()">🗺 카카오맵으로 길찾기</button>
+    </div>
+
+    <div class="temple-list" id="templeList"></div>
+  </div>
+
+  <div class="map-wrapper">
+    <div id="map"></div>
+    <div class="detail-panel" id="detailPanel">
+      <div class="detail-header">
+        <h2 id="dp-name"></h2>
+        <p id="dp-location"></p>
+        <button class="btn-close" onclick="closeDetail()">✕</button>
+      </div>
+      <div class="detail-body">
+        <div class="detail-row">
+          <span class="icon">📅</span><span class="label">프로그램</span><span class="val" id="dp-program"></span>
+        </div>
+        <div class="detail-row">
+          <span class="icon">💴</span><span class="label">비용</span><span class="val" id="dp-price"></span>
+        </div>
+        <div class="detail-row">
+          <span class="icon">📞</span><span class="label">연락처</span><span class="val" id="dp-tel"></span>
+        </div>
+        <div class="detail-row">
+          <span class="icon">⭐</span><span class="label">계절</span><span class="val" id="dp-season"></span>
+        </div>
+        <div class="tags-row" id="dp-tags"></div>
+        <div class="detail-actions">
+          <button class="btn-kakao" id="dp-route-btn">🗺 카카오 길찾기</button>
+          <button class="btn-site" id="dp-site-btn">🔗 공식 사이트</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+//  데이터
+// ═══════════════════════════════════════
+const temples = [
+  { id:1, name:"해인사", location:"경남 합천", lat:35.7959, lng:128.0958, season:["autumn"], recommended:true, program:"가야산 단풍 선수행", price:"50,000원~", tel:"055-934-3000", tags:["세계문화유산","팔만대장경","단풍명소"], site:"https://www.haeinsa.or.kr" },
+  { id:2, name:"통도사", location:"경남 양산", lat:35.4891, lng:129.0565, season:["spring"], recommended:true, program:"불보종찰 명상수행", price:"60,000원~", tel:"055-382-7182", tags:["불보사찰","자장율사","봄꽃"], site:"https://www.tongdosa.or.kr" },
+  { id:3, name:"선운사", location:"전북 고창", lat:35.5625, lng:126.6285, season:["spring","autumn"], recommended:true, program:"꽃무릇·동백 힐링캠프", price:"45,000원~", tel:"063-561-1422", tags:["꽃무릇","동백","도솔암"], site:"https://www.seonunsa.org" },
+  { id:4, name:"조계사", location:"서울 종로", lat:37.5740, lng:126.9809, season:["spring","summer","autumn","winter"], recommended:false, program:"도심 속 1박2일 사찰체험", price:"70,000원~", tel:"02-732-2114", tags:["도심사찰","연등축제","서울"], site:"https://www.jogyesa.kr" },
+  { id:5, name:"월정사", location:"강원 평창", lat:37.5946, lng:128.5419, season:["winter"], recommended:true, program:"전나무숲 눈꽃 선수행", price:"55,000원~", tel:"033-339-6800", tags:["전나무숲","눈꽃","오대산"], site:"https://www.woljeongsa.org" },
+  { id:6, name:"백담사", location:"강원 인제", lat:38.1017, lng:128.4781, season:["summer"], recommended:true, program:"설악산 계곡 여름수련", price:"50,000원~", tel:"033-462-6969", tags:["설악산","계곡","만해 한용운"], site:"https://www.baekdamsa.org" },
+  { id:7, name:"송광사", location:"전남 순천", lat:35.0052, lng:127.2918, season:["spring","autumn"], recommended:false, program:"승보종찰 참선 프로그램", price:"55,000원~", tel:"061-755-0107", tags:["승보사찰","16국사","순천"], site:"https://www.songgwangsa.org" },
+  { id:8, name:"화엄사", location:"전남 구례", lat:35.2103, lng:127.4971, season:["spring"], recommended:true, program:"지리산 매화·벚꽃 명상", price:"60,000원~", tel:"061-782-7600", tags:["지리산","매화","각황전"], site:"https://www.hwaeomsa.org" },
+  { id:9, name:"불국사", location:"경북 경주", lat:35.7896, lng:129.3317, season:["spring","autumn"], recommended:false, program:"신라천년 문화수행", price:"65,000원~", tel:"054-746-9913", tags:["세계문화유산","신라","석굴암"], site:"https://www.bulguksa.or.kr" },
+  { id:10, name:"법주사", location:"충북 보은", lat:36.5368, lng:127.8271, season:["autumn"], recommended:false, program:"속리산 단풍 치유캠프", price:"50,000원~", tel:"043-543-3615", tags:["속리산","팔상전","단풍"], site:"https://www.beopjusa.org" },
+  { id:11, name:"봉정사", location:"경북 안동", lat:36.5743, lng:128.8236, season:["autumn"], recommended:false, program:"안동 한국정신문화 수행", price:"45,000원~", tel:"054-853-4181", tags:["최고 목조건물","유네스코","가을"], site:"https://www.bongjeongsa.org" },
+  { id:12, name:"직지사", location:"경북 김천", lat:36.1247, lng:128.0521, season:["autumn","spring"], recommended:false, program:"황악산 계절 선수행", price:"48,000원~", tel:"054-429-1700", tags:["황악산","직지인심","대웅전"], site:"https://www.jikjisa.or.kr" },
+  { id:13, name:"내장사", location:"전북 정읍", lat:35.4832, lng:126.8948, season:["autumn"], recommended:true, program:"내장산 단풍 힐링 체험", price:"45,000원~", tel:"063-538-8741", tags:["내장산","단풍명소","전국 최고 단풍"], site:"https://www.naejangsa.org" },
+  { id:14, name:"부석사", location:"경북 영주", lat:36.9934, lng:128.6599, season:["summer","autumn"], recommended:false, program:"소백산 안양루 명상", price:"50,000원~", tel:"054-633-3464", tags:["유네스코","무량수전","부석"], site:"https://www.pusoksa.org" },
+  { id:15, name:"마곡사", location:"충남 공주", lat:36.6068, lng:126.9109, season:["summer"], recommended:false, program:"태화산 계곡 여름수행", price:"45,000원~", tel:"041-841-6221", tags:["태화산","유네스코","봄향기"], site:"https://www.magoksa.or.kr" }
+];
+
+const seasonInfo = {
+  spring:  { emoji:"🌸", label:"봄 추천",  title:"🌸 봄 — 꽃비 내리는 절집",        desc:"벚꽃·동백·매화가 만개하는 봄, 자연과 함께 마음을 열어보세요." },
+  summer:  { emoji:"🌿", label:"여름 추천", title:"🌿 여름 — 청량한 계곡 선수행",     desc:"도시의 열기를 벗어나 산사의 시원한 여름을 경험해 보세요." },
+  autumn:  { emoji:"🍁", label:"가을 추천", title:"🍁 가을 — 단풍 물드는 고찰",       desc:"온 산이 붉게 물드는 가을, 깊어가는 선禪의 계절입니다." },
+  winter:  { emoji:"❄️", label:"겨울 추천", title:"❄️ 겨울 — 눈꽃 피는 적막한 산사", desc:"하얀 눈으로 덮인 고즈넉한 산사에서 나를 비워 보세요." },
+  all:     { emoji:"🙏", label:"전체",       title:"🙏 전국 템플스테이",               desc:"계절 탭을 눌러 그 계절에 어울리는 사찰을 추천받아 보세요." }
+};
+
+// ═══════════════════════════════════════
+//  상태
+// ═══════════════════════════════════════
+let map, markers = [], currentSeason = 'all', selectedTemple = null;
+
+// ═══════════════════════════════════════
+//  Leaflet 지도 초기화
+// ═══════════════════════════════════════
+window.onload = function () {
+  map = L.map('map').setView([36.4, 127.8], 7);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 19
+  }).addTo(map);
+
+  renderList('all');
+  placeMarkers(temples);
+};
+
+// ═══════════════════════════════════════
+//  커스텀 마커 아이콘
+// ═══════════════════════════════════════
+function makeIcon(recommended) {
+  return L.divIcon({
+    className: '',
+    html: `<div style="
+      width:${recommended ? 36 : 28}px;
+      height:${recommended ? 36 : 28}px;
+      background:${recommended ? '#c9932a' : '#4a6741'};
+      border:3px solid white;
+      border-radius:50% 50% 50% 0;
+      transform:rotate(-45deg);
+      box-shadow:0 2px 8px rgba(0,0,0,0.3);
+      display:flex;align-items:center;justify-content:center;">
+      <span style="transform:rotate(45deg);font-size:${recommended ? 16 : 12}px;">
+        ${recommended ? '★' : '🏯'}
+      </span>
+    </div>`,
+    iconSize: [recommended ? 36 : 28, recommended ? 36 : 28],
+    iconAnchor: [recommended ? 18 : 14, recommended ? 36 : 28],
+    popupAnchor: [0, -(recommended ? 36 : 28)]
+  });
+}
+
+// ═══════════════════════════════════════
+//  마커 배치
+// ═══════════════════════════════════════
+function placeMarkers(list) {
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+
+  list.forEach(temple => {
+    const marker = L.marker([temple.lat, temple.lng], { icon: makeIcon(temple.recommended) })
+      .addTo(map)
+      .bindPopup(`
+        <div class="temple-popup">
+          <h3>${temple.name} ${temple.recommended ? '★' : ''}</h3>
+          <p>📍 ${temple.location}</p>
+          <p style="color:var(--bamboo,#7a9e68);font-size:11px;">${temple.tags.join(' · ')}</p>
+          <button onclick="selectFromMap(${temple.id})">상세 정보 보기</button>
+        </div>
+      `);
+
+    marker.on('click', () => highlightList(temple.id));
+    markers.push(marker);
+  });
+}
+
+// ═══════════════════════════════════════
+//  목록 렌더링
+// ═══════════════════════════════════════
+function renderList(season) {
+  const filtered = season === 'all' ? temples : temples.filter(t => t.season.includes(season));
+  const sorted = [...filtered].sort((a, b) => b.recommended - a.recommended);
+
+  document.getElementById('templeList').innerHTML = sorted.map((t, i) => {
+    const seasonEmojis = [...new Set(t.season)].map(s => seasonInfo[s].emoji).join('');
+    const badgeClass = t.season.length > 2 ? 'badge-all'
+      : t.season[0] === 'spring' ? 'badge-spring'
+      : t.season[0] === 'summer' ? 'badge-summer'
+      : t.season[0] === 'autumn' ? 'badge-autumn'
+      : 'badge-winter';
+
+    return `
+      <div class="temple-item ${t.recommended ? 'recommended' : ''}" id="item-${t.id}" onclick="selectTempleFromList(${t.id})">
+        <div class="temple-rank">${t.recommended ? '★' : i + 1}</div>
+        <div class="temple-info">
+          <div class="temple-name-row">
+            <span class="temple-name">${t.name}</span>
+            <span class="badge-season ${badgeClass}">${seasonEmojis}</span>
+          </div>
+          <div class="temple-meta">${t.location} · ${t.price}</div>
+          <div class="temple-tag">${t.tags.join(' · ')}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+//  계절 필터
+// ═══════════════════════════════════════
+function filterSeason(season, btn) {
+  currentSeason = season;
+  document.querySelectorAll('.season-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+
+  const info = seasonInfo[season];
+  document.getElementById('seasonBanner').innerHTML =
+    `<h3>${info.title}</h3><p>${info.desc}</p>`;
+
+  const filtered = season === 'all' ? temples : temples.filter(t => t.season.includes(season));
+  renderList(season);
+  placeMarkers(filtered);
+}
+
+// ═══════════════════════════════════════
+//  상세 패널
+// ═══════════════════════════════════════
+function showDetail(temple) {
+  selectedTemple = temple;
+  document.getElementById('endInput').value = `${temple.name} (${temple.location})`;
+  document.getElementById('dp-name').textContent = temple.name;
+  document.getElementById('dp-location').textContent = '📍 ' + temple.location;
+  document.getElementById('dp-program').textContent = temple.program;
+  document.getElementById('dp-price').textContent = temple.price;
+  document.getElementById('dp-tel').textContent = temple.tel;
+  document.getElementById('dp-season').textContent = temple.season.map(s => seasonInfo[s].emoji + ' ' + seasonInfo[s].label).join(', ');
+  document.getElementById('dp-tags').innerHTML = temple.tags.map(t => `<span class="tag">${t}</span>`).join('');
+  document.getElementById('dp-route-btn').onclick = openKakaoRoute;
+  document.getElementById('dp-site-btn').onclick = () => window.open(temple.site, '_blank');
+  document.getElementById('detailPanel').classList.add('visible');
+}
+
+function closeDetail() {
+  document.getElementById('detailPanel').classList.remove('visible');
+}
+
+// ═══════════════════════════════════════
+//  선택 핸들러
+// ═══════════════════════════════════════
+function selectFromMap(id) {
+  const temple = temples.find(t => t.id === id);
+  if (temple) { showDetail(temple); highlightList(id); }
+}
+
+function selectTempleFromList(id) {
+  const temple = temples.find(t => t.id === id);
+  if (!temple) return;
+  highlightList(id);
+  showDetail(temple);
+  map.setView([temple.lat, temple.lng], 10, { animate: true });
+  // 해당 마커 팝업 열기
+  const idx = (currentSeason === 'all' ? temples : temples.filter(t => t.season.includes(currentSeason)))
+    .findIndex(t => t.id === id);
+  if (markers[idx]) markers[idx].openPopup();
+}
+
+function highlightList(id) {
+  document.querySelectorAll('.temple-item').forEach(el => el.classList.remove('active'));
+  const item = document.getElementById('item-' + id);
+  if (item) { item.classList.add('active'); item.scrollIntoView({ block: 'nearest' }); }
+}
+
+// ═══════════════════════════════════════
+//  길찾기
+// ═══════════════════════════════════════
+function openKakaoRoute() {
+  if (!selectedTemple) { alert('지도에서 절을 먼저 선택해주세요.'); return; }
+  const start = document.getElementById('startInput').value.trim();
+  const name = encodeURIComponent(selectedTemple.name);
+  const lat = selectedTemple.lat, lng = selectedTemple.lng;
+
+  const url = start
+    ? `https://map.kakao.com/link/from/${encodeURIComponent(start)}/to/${name},${lat},${lng}`
+    : `https://map.kakao.com/link/to/${name},${lat},${lng}`;
+  window.open(url, '_blank');
+}
+
+function useMyLocation() {
+  if (!navigator.geolocation) { alert('위치 정보를 지원하지 않는 브라우저입니다.'); return; }
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const { latitude: lat, longitude: lng } = pos.coords;
+      document.getElementById('startInput').value = `현재 위치 (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+      // 내 위치 마커
+      L.marker([lat, lng], {
+        icon: L.divIcon({
+          className: '',
+          html: '<div style="width:16px;height:16px;background:#1565c0;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.4);"></div>',
+          iconSize: [16, 16], iconAnchor: [8, 8]
+        })
+      }).addTo(map).bindPopup('📍 내 현재 위치').openPopup();
+      map.setView([lat, lng], 9);
+    },
+    () => alert('위치 정보를 가져올 수 없습니다. 브라우저 권한을 확인해주세요.')
+  );
+}
+</script>
+</body>
+</html>
